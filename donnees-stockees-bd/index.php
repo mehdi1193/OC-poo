@@ -38,7 +38,7 @@ class Personnage {
 //  Les setters
 
     public function setId($id) {
-        if (!is_int($id) || $id < 0) {
+        if ($id < 0) {
             trigger_error("L'id doit être un nombre positif", E_USER_WARNING);
         }
         $this->_id = $id;
@@ -80,13 +80,108 @@ class Personnage {
     }
     
     public function __construct($donnees) {
-        $this->setId($donnees['id']);
-        $this->setDegats($donnees['degats']);
-//        $this->setExperience($experience);
-//        $this->setNiveau($niveau);
-//        $this->setNom($nom);
-//        $this->setForcePerso($forcePerso);
+        // Remplacer le constructeur par la méthode hydrate
+    /*   $this->setId($donnees['id']);
+       $this->setDegats($donnees['degats']);
+       $this->setExperience($experience);
+       $this->setNiveau($niveau);
+       $this->setNom($nom);
+       $this->setForcePerso($forcePerso);*/
+
+        $this->hydrate($donnees);
     }
+    public function hydrate(array $donnees){
+        foreach($donnees as $cle => $valeur){
+            $setter = 'set'.ucfirst($cle);
+            if(method_exists($this, $setter)){
+                $this->$setter($valeur);
+            }
+        }
+
+        /* if(isset($donnees['id'])){
+            $this->setId($donnees['id']);
+        }
+        if(isset($donnees['nom'])){
+            $this->setNom($donnees['nom']);
+        }
+        if(isset($donnees['forcePerso'])){
+            $this->setForcePerso($donnees['forcePerso']);
+        }
+        if(isset($donnees['degats'])){
+            $this->setDegats($donnees['degats']);
+        }
+        if(isset($donnees['niveau'])){
+            $this->setNiveau($donnees['niveau']);
+        }
+        if(isset($donnees['experience'])){
+            $this->setExperience($donnees['experience']);
+        } */
+    }
+
+}
+//La classe Personnage Manager permet de gérer un personnage
+class PersonnageManager{
+    private $_bd;
+    //les méthodes
+    public function add(Personnage $perso){
+         // Préparation de la requête d'insertion.
+        // Assignation des valeurs pour le nom, la force, les dégâts, l'expérience et le niveau du personnage.
+        // Exécution de la requête.
+        $q = $this->_bd->prepare('INSERT INTO personnages(nom,forcePerso,niveau,experience,degats) VALUES (:nom,:forcePerso,:niveau,:experience,:degats)');
+        $q->bindValue(':nom',$perso->nom());
+        $q->bindValue(':forcePerso',$perso->forcePerso());
+        $q->bindValue(':niveau',$perso->niveau());
+        $q->bindvalue('experience',$perso->experience());
+        $q->bindValue('degats',$perso->degats());
+
+        $q->execute();
+    }
+    public function update(Personnage $perso){
+        // Prépare une requête de type UPDATE.
+        // Assignation des valeurs à la requête.
+        // Exécution de la requête.
+        $q = $this->_db->prepare('UPDATE personnages SET nom= :nom,forcePerso= :forcePerso,niveau = :niveau,experience = :experience,degats= :degats WHERE id = :id');
+        $q->bindValue(':nom',$perso->nom());
+        $q->bindValue(':forcePerso',$perso->forcePerso());
+        $q->bindValue(':niveau',$perso->niveau());
+        $q->bindvalue('experience',$perso->experience());
+        $q->bindValue('degats',$perso->degats());
+        $q->bindValue('id',$perso->id());
+
+        $q->execute();
+
+
+    }
+    public function delete(Personnage $perso){
+        // Exécute une requête de type DELETE.
+        $this->_db->exec('DELETE FROM personnages WHERE id ='.$perso->id());
+
+    }
+    public function getList(){
+        // Retourne la liste de tous les personnages.
+            $persos = [];
+        $q = $this->_db->query('SELECT id, nom, forcePerso, experience, niveau, degats FROM personnages ORDER BY nom');
+        while($donnees = $q->fetch(PDO::FETCH_ASSOC)){
+            $persos = new Personnage($donnees);
+        }
+        return $persos;
+
+    }
+    public function get($id){
+        $id = (int) $id;
+        // Exécute une requête de type SELECT avec une clause WHERE, et retourne un objet Personnage.
+        $q = $this->_db->query('SELECT id, nom, forcePerso, niveau, experience, degats FROM personnages WHERE id='.$id);
+        $donnees = $q->fetch(PDO::FETCH_ASSOC);
+        return new Personnage($donnees);
+    }
+    public function setBd(PDO $db){
+        $this->_bd=$db;
+    }
+    public function __construct($db){
+        $this->setBd($db);
+
+    }
+    
 
 }
 
@@ -106,3 +201,15 @@ while ($donnes = $request->fetch(PDO::FETCH_ASSOC)){
     echo $perso->id(),' mm : ',$perso->nom(),' a ',$perso->forcePerso(),' de force, ',$perso->degats(),' de dégâts, ',$perso->experience()
             ,'d\'expérience et il est au niveau ',$perso->niveau(),'</br>' ;
 }
+
+$perso = new Personnage([
+    'nom' => 'Victor',
+    'forcePerso' => 5,
+    'degats' => 0,
+    'niveau' => 1,
+    'experience' => 0
+  ]);
+$db = new PDO('mysql:host=localhost;dbname=poo', 'root', '');
+$manager = new PersonnageManager($db);
+$manager->add($perso);
+echo'succès';
